@@ -467,3 +467,14 @@ Date:   Wed Sep 18 13:29:57 2013 +0200
 +const char *bcm47xx_board_get_name(void);
 +
 +#endif /* __BCM47XX_BOARD_H */
+diff --git a/arch/mips/bcm47xx/board.c b/arch/mips/bcm47xx/board.c
+index 13ed842..224cf05 100644
+--- a/arch/mips/bcm47xx/board.c
++++ b/arch/mips/bcm47xx/board.c
+@@ -1,5 +1,6 @@
+ #include <linux/export.h>
+ #include <linux/string.h>
++#include <linux/errno.h>
+ #include <bcm47xx_board.h>
+ #include <bcm47xx_nvram.h>
+ 
