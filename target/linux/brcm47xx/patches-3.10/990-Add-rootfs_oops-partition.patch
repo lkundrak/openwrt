@@ -1,0 +1,83 @@
+Add rootfs_oops partition
+
+Index: linux-3.10.18/drivers/mtd/Kconfig
+===================================================================
+--- linux-3.10.18.orig/drivers/mtd/Kconfig
++++ linux-3.10.18/drivers/mtd/Kconfig
+@@ -23,6 +23,11 @@ config MTD_ROOTFS_SPLIT
+ 	select MTD_SPLIT
+ 	default y
+ 
++config MTD_ROOTFS_OOPS_SPLIT
++	bool "Add OOPS partition to rootfs"
++	depends on MTD_ROOTFS_SPLIT
++	default y
++
+ config MTD_SPLIT_FIRMWARE
+ 	bool "Automatically split firmware partition for kernel+rootfs"
+ 	default y
+Index: linux-3.10.18/drivers/mtd/mtdpart.c
+===================================================================
+--- linux-3.10.18.orig/drivers/mtd/mtdpart.c
++++ linux-3.10.18/drivers/mtd/mtdpart.c
+@@ -762,6 +762,30 @@ static int split_squashfs(struct mtd_inf
+ 	return 0;
+ }
+ 
++static void split_rootfs_oops(struct mtd_info *master, struct mtd_part *part)
++{
++	unsigned int split_offset = 0;
++	unsigned int split_size;
++	int ret;
++
++	ret = run_parsers_by_type(part, MTD_PARSER_TYPE_ROOTFS);
++	if (ret > 0)
++		return;
++
++	ret = split_squashfs(master, part->offset, &split_offset);
++	if (ret)
++		return;
++
++	if (split_offset <= 0)
++		return;
++
++	split_size = master->erasesize * 2;
++	printk(KERN_INFO "mtd: partition \"%s\" created automatically, ofs=0x%x, len=0x%x\n",
++		ROOTFS_SPLIT_OOPS_NAME, split_offset, split_size);
++
++	__mtd_add_partition(master, ROOTFS_SPLIT_OOPS_NAME, split_offset,
++			    split_size, false);
++}
+ static void split_rootfs_data(struct mtd_info *master, struct mtd_part *part)
+ {
+ 	unsigned int split_offset = 0;
+@@ -779,6 +803,8 @@ static void split_rootfs_data(struct mtd
+ 	if (split_offset <= 0)
+ 		return;
+ 
++	if (config_enabled(CONFIG_MTD_ROOTFS_OOPS_SPLIT))
++		split_offset += 2 * master->erasesize;
+ 	split_size = part->mtd.size - (split_offset - part->offset);
+ 	printk(KERN_INFO "mtd: partition \"%s\" created automatically, ofs=0x%x, len=0x%x\n",
+ 		ROOTFS_SPLIT_NAME, split_offset, split_size);
+@@ -846,6 +872,8 @@ static void mtd_partition_split(struct m
+ 	if (!strcmp(part->mtd.name, "rootfs")) {
+ 		rootfs_found = 1;
+ 
++		if (config_enabled(CONFIG_MTD_ROOTFS_OOPS_SPLIT))
++			split_rootfs_oops(master, part);
+ 		if (config_enabled(CONFIG_MTD_ROOTFS_SPLIT))
+ 			split_rootfs_data(master, part);
+ 	}
+Index: linux-3.10.18/drivers/mtd/mtdsplit.h
+===================================================================
+--- linux-3.10.18.orig/drivers/mtd/mtdsplit.h
++++ linux-3.10.18/drivers/mtd/mtdsplit.h
+@@ -17,6 +17,7 @@
+ #define ROOTFS_PART_NAME	"rootfs"
+ 
+ #define ROOTFS_SPLIT_NAME	"rootfs_data"
++#define ROOTFS_SPLIT_OOPS_NAME	"rootfs_oops"
+ 
+ #ifdef CONFIG_MTD_SPLIT
+ int mtd_get_squashfs_len(struct mtd_info *master,
