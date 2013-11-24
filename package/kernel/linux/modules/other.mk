@@ -863,3 +863,18 @@ define KernelPackage/thermal-kirkwood/description
 endef
 
 $(eval $(call KernelPackage,thermal-kirkwood))
+
+
+define KernelPackage/netconsole
+  SUBMENU:=$(OTHER_MENU)
+  TITLE:=Network console logging support
+  KCONFIG:=CONFIG_NETCONSOLE CONFIG_NETPOLL=y CONFIG_NETPOLL_TRAP=y CONFIG_NET_POLL_CONTROLLER=y
+  FILES:=$(LINUX_DIR)/drivers/net/netconsole.ko
+  AUTOLOAD:=$(call AutoLoad,50,netconsole)
+endef
+
+define KernelPackage/netconsole/description
+ If you want to log kernel messages over the network, enable this.
+endef
+
+$(eval $(call KernelPackage,netconsole))
